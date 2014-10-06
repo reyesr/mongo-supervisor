@@ -1,0 +1,63 @@
+var util = require("util"),
+    fs = require("fs");
+
+// var logger = require('morgan');
+
+var accessLogStream = fs.createWriteStream(__dirname + '/../access.log', {flags: 'a'})
+
+function getip(req) {
+    return req.ip
+        || req._remoteAddress
+        || (req.connection && req.connection.remoteAddress)
+        || undefined;
+}
+
+function log(level, msg, req) {
+    var line;
+    var when = new Date().toISOString();
+    if (req) {
+        line = util.format("[%s][%s] %s: %s", when, getip(req), level, msg);
+    } else {
+        line = util.format("[%s] %s: %s", when, level, msg);
+    }
+
+    console.log(line);
+    accessLogStream.write(line + "\n");
+}
+
+function applog(req, level, msg) {
+    if (typeof req == "string" && typeof level == "string" && msg === undefined) {
+        msg = req;
+        req = undefined;
+    }
+    log(level, msg, req);
+}
+
+
+exports.forExpress = function(req, res, next) {
+     log("ACCESS", util.format("%s %s %s", req.method, req.url, req.path), req);
+    next();
+};
+
+exports.info = function(req, msg) {
+    applog(req, "INFO", msg);
+}
+
+exports.error = function(req, msg) {
+    applog(req, "ERROR", msg);
+}
+
+exports.debug = function(msg, req) {
+    applog(req, "DEBUG", req);
+}
+
+exports.logger = function(name) {
+    var namePrefix = "[" + name + "] ";
+    return function(req, msg) {
+        if (typeof req == "string" && msg === undefined) {
+            msg = req;
+            req = undefined;
+        }
+        exports.debug(req, namePrefix + msg);
+    }
+}

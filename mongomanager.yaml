@@ -1,0 +1,21 @@
+#
+# The path and config files for mongod
+mongod:
+  path: "/usr/bin/mongod"
+  config: "mongosample.conf"
+mongodump:
+  path: "/usr/bin/mongodump"
+mongorestore:
+  path: "/usr/bin/mongorestore"
+#
+# The security part is mandatory, if no security is defined, the rest api will not be enabled at all.
+# Possible options:
+#  - define header-key-name and header-key-value (both as string) to define an header and its expected value
+#    (the access is denied is the header is defined here but not sent by the client)
+#  - open (boolean value): if open is true, then there is no security check
+security:
+# Modify the header-key-* values for production !!
+  header-key-name: "X-ACCESS"
+  header-key-value: "efb92b97a659bf04ac599bac68e36559fec30eafd63381bf19513c82b290c765"
+# set open to true to disable the rest api access control (only for dev)
+  open: true
