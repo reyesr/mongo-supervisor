@@ -3,7 +3,7 @@
 # those are the default values in ubuntu, you may need to change it if you use something else
 mongod:
   path: "/usr/bin/mongod"
-  config: "mongosample.conf"
+  config: "/etc/mongodb.conf"
 mongodump:
   path: "/usr/bin/mongodump"
 mongorestore:
@@ -19,4 +19,4 @@ security:
 #  header-key-name: "X-ACCESS"
 #  header-key-value: "efb92b97a659bf04ac599bac68e36559fec30eafd63381bf19513c82b290c765"
 ## set open to true to disable the rest api access control
-  open: true
+#  open: true

@@ -30,3 +30,5 @@ node_modules
 # no intellij idea project data
 .idea
 *.iml
+
+build_dir

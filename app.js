@@ -15,6 +15,10 @@ var webserver = server.listen(server.get('port'), function() {
 var CURLCMD = "curl";
 if (config.security["header-key-name"] && config.security["header-key-value"]) {
     CURLCMD += " -H '" + config.security["header-key-name"] +":" + config.security["header-key-value"]+ "'";
+} else if (config.security.open) {
+    logger("Warning, the rest api security access is disabled.");
+} else {
+    logger("Warning, no security has been defined, rest api cannot be used.");
 }
 var URL = " http://[URL]";
 
