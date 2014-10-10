@@ -3,7 +3,8 @@ var fs = require("fs"),
     path = require("path"),
     shell = require("shelljs"),
     spawn = require("child_process").spawn,
-    temporary = require("temporary");
+    temporary = require("temporary"),
+    async = require("async");
 var gulp = require('gulp');
 var yaml = require("js-yaml");
 
@@ -16,27 +17,55 @@ var argv = require('yargs')
     .options('l', { alias: "location", default: "build_dir" })
     .argv;
 
-if (argv._.length == 0) {
-    displayUsage();
-} else {
-    argv._.forEach(function (command) {
+function processCommands(cmdList, callback) {
+
+    var nextCallback = function(err) {
+        if (!err) {
+            processCommands(cmdList.slice(1), callback);
+        } else {
+            callback(err);
+        }
+    }
+
+    if (cmdList.length>0) {
+        var command = cmdList[0];
+
         switch (command) {
-            case 'create-docker-img':
-                createDockerImage(argv);
+            case 'docker-create':
+                createDockerImage(argv, nextCallback);
                 break;
-            case 'run-docker-img':
-                createDockerImage(argv);
-                runDocker(argv);
+            case 'docker-run':
+                async.waterfall([
+                    function(cb) {
+                        createDockerImage(argv, cb);
+                    },
+                    function(cb) {
+                        runDocker(argv, cb);
+                    }
+                ], nextCallback);
                 break;
             case 'package':
                 buildAppAt(tmpdir.location, createSecurity(options));
                 console.log("Application built, available at " + options.location);
+                nextCallback();
                 break;
             default:
                 console.error("Unrecognized option: " + command);
                 console.error("Aborting.");
                 process.exit(1);
         }
+
+    } else {
+        callback(null);
+    }
+}
+
+
+if (argv._.length == 0) {
+    displayUsage();
+} else {
+    processCommands(argv._, function() {
+
     });
 }
 
@@ -63,21 +92,20 @@ function createSecurity(options) {
     return security;
 }
 
-function createDockerImage(options) {
+function createDockerImage(options, callback) {
     var tmpdir = new temporary.Dir();
     console.log("Temp dir", tmpdir);
     var security = createSecurity(options);
     buildAppAt(tmpdir.path + "/mongo-supervisor", security);
-    buildDocker(tmpdir.path, options);
-
+    buildDocker(tmpdir.path, options, callback);
 }
 
 function displayUsage() {
     console.log("Usage: build.js [OPTIONS] [COMMAND]");
-    console.log(" Possible commands: package create-docker-img run-docker");
+    console.log(" Possible commands: package docker-build docker-run");
     console.log("      package : creates a packaged mongo-supervisor");
-    console.log("      create-docker-img : creates a docker image based on the docker/Dockerfile");
-    console.log("      run-docker : creates and run a docker image based on the docker/Dockerfile");
+    console.log("      docker-create : creates a docker image based on the docker/Dockerfile");
+    console.log("      docker-run : creates and run a docker image based on the docker/Dockerfile");
     console.log(" Possible options:");
     console.log("     --open-api -O : Open rest api (no security check) [docker]");
     console.log("     --sec-headers -h HEAD:VALUE : define security header and value [docker]");
@@ -96,17 +124,20 @@ function buildDocker(targetDir, options, callback) {
         if (code == 0) {
             console.log("Docker image created.");
             console.log("You can run the image with the following command: docker run --rm -p 127.0.0.1:3000:3000 -t -i '" + options.tag + "'");
+            callback(null);
         } else {
-            console.error("Error, docker returned with code " + result.code + ", aborted.");
+            console.error("Error, docker returned with code " + code + ", aborted.");
             process.exit(98);
         }
     });
 }
 
-function runDocker(options) {
-    var cmdline = (options.sudoDocker?"sudo ":"") + "docker run --rm -p 127.0.0.1:3000:3000  --name=mongo_supervisor -t -i '" + options.tag + "'";
+function runDocker(options, callback) {
+    // var cmdline = (options.sudoDocker?"sudo ":"") + "docker run --rm -p 127.0.0.1:3000:3000  --name=mongo_supervisor -t -i '" + options.tag + "'";
+    var cmdline = [].concat((options.sudoDocker?"sudo ":[]), "docker", "run", "--rm", "-p", "127.0.0.1:3000:3000", "--name=mongo_supervisor", options.tag);
     console.log("running [" + cmdline + "]");
-    var result = shell.exec(cmdline);
+    // var result = shell.exec(cmdline);
+    executeCommand(cmdline, callback);
 };
 
 function buildAppAt(target, securityObject) {
@@ -121,6 +152,7 @@ function buildAppAt(target, securityObject) {
 
 var currentProcess = null;
 function executeCommand(cmdline, callback) {
+    console.log("Executing: ", cmdline.join(' '));
     currentProcess = spawn(cmdline[0], cmdline.slice(1));
 
     currentProcess.stdout.on("data", function(data) {
@@ -139,6 +171,7 @@ function executeCommand(cmdline, callback) {
 
 function killCurrentCommand() {
     if (currentProcess != null && typeof currentProcess.kill == "function") {
+        console.error("Process aborted, process kill()ed");
         currentProcess.kill();
         currentProcess = null;
     }
