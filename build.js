@@ -45,8 +45,8 @@ function processCommands(cmdList, callback) {
                 ], nextCallback);
                 break;
             case 'package':
-                buildAppAt(tmpdir.location, createSecurity(options));
-                console.log("Application built, available at " + options.location);
+                buildAppAt(argv.location, createSecurity(argv));
+                console.log("Application built, available at " + argv.location);
                 nextCallback();
                 break;
             default:
