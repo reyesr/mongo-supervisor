@@ -2,14 +2,15 @@ var logger = require('./lib/logger').logger('mongo-manager');
 var server = require('./lib/webserver');
 var config = require("./lib/config");
 
-server.set('port', process.env.PORT || 3000);
+var apiPort = process.env.APIPORT || 3000,
+    apiAddress = process.env.APIADDRESS || "0.0.0.0";
 
 var mongod = require("./lib/mongod");
 
 mongod.start();
 
-var webserver = server.listen(server.get('port'), function() {
-    logger('Express server listening on port ' + webserver.address().port);
+var webserver = server.listen(apiPort, apiAddress, function() {
+    logger('Express server listening on: ' + JSON.stringify(webserver.address()));
 });
 
 var CURLCMD = "curl";
